@@ -53,6 +53,7 @@ int elf_read_sections(int fd, Elf64_Ehdr *header) {
     }
 
     printf("\n\n");
+    Elf64_Shdr symtab_sh = {0};
 
     printf("%-4s %-12s %-4s %-10s %-8s %-8s %-8s %-8s\n",
         "[Nr]", "name", "type", "addr", "offset", "size", "flags", "link");
@@ -65,10 +66,13 @@ int elf_read_sections(int fd, Elf64_Ehdr *header) {
             return 1;
         }
         getFlags(flags, sh.sh_flags);
-        printf("[%2d] %-12s %-4u 0x%08lx 0x%06lx 0x%06lx %-8s %d\n",
+        if (!strcmp(names + sh.sh_name, ".symtab")) symtab_sh = sh;
+        printf("[%2d] %-12s %-4u 0x%08lx 0x%06lx 0x%06lx %-8s %u\n",
             i, names + sh.sh_name, sh.sh_type,
             sh.sh_addr, sh.sh_offset, sh.sh_size, flags, sh.sh_link);
     }
     free(names);
+    (void)symtab_sh;
+    // elf_read_symbols(fd, header, symtab_sh)
     return 0;
 }
