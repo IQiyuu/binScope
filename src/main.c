@@ -16,10 +16,13 @@ int main(int argc, char **argv)
     }
 
     Elf64_Ehdr header;
+    if (elf_read_header(fd, &header) || elf_read_segments(fd, &header))
+    {
+        close(fd);
+        return 1;
+    }
 
-    elf_read_header(fd, &header);
-
-    elf_read_sections(fd, &header);
-    
+    int ret = elf_read_sections(fd, &header);
     close(fd);
+    return ret;
 }

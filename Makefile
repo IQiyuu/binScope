@@ -5,7 +5,9 @@ CFLAGS = -Wall -Wextra -Werror -std=c17 -g
 
 SRC = 	src/main.c \
 		src/elf.c \
-		src/sections.c
+		src/sections.c \
+		src/symbols.c \
+		src/segments.c
 
 OBJ = $(SRC:.c=.o)
 

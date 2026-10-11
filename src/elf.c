@@ -1,139 +1,83 @@
 #include "elf_parser.h"
 
-char *intToHex(int n) {
-    char *res = malloc(3);
-
-    res[0] = n / 16 + ((n / 16 < 10) ? '0' : 'A'-10);
-    res[1] = n % 16 + ((n % 16 < 10) ? '0' : 'A'-10);
-    res[2] = 0;
-    return res;
-}
-
 char *getEndian(int n) {
-    char *endian;
     switch (n) {
-        case 0:
-            endian = "Unknow type";
-            break ;
-        case 1:
-            endian = "Little-Endian";
-            break ;
-        default:
-            endian = "Big-Endian";
+    case 1:  return "Little-Endian";
+    case 2:  return "Big-Endian";
+    default: return "Unknown";
     }
-    return endian;
 }
 
 char *getArchi(int n) {
-    char *archi;
     switch (n) {
-        case 62:
-            archi = "x86_64";
-            break ;
-        case 3:
-            archi = "x86";
-            break ;
-        case 40:
-            archi = "ARM";
-            break ;
-        case 183:
-            archi = "AArch64";
-            break ;
-        default:
-            archi = "Unknow";
+    case 62:  return "x86_64";
+    case 3:   return "x86";
+    case 40:  return "ARM";
+    case 183: return "AArch64";
+    default:  return "Unknown";
     }
-    return archi;
 }
 
 char *getType(int n) {
-    char *type;
     switch (n) {
-        case 1:
-            type = "Object file";
-            break ;
-        case 2:
-            type = "Executable file";
-            break ;
-        case 3:
-            type = "Shared object file";
-            break ;
-        case 4:
-            type = "Core dump";
-            break ;
-        default:
-            type = "Unknow type";
+    case 1:  return "Object file";
+    case 2:  return "Executable file";
+    case 3:  return "Shared object file";
+    case 4:  return "Core dump";
+    default: return "Unknown type";
     }
-    return type;
 }
 
 char *getOsABI(int n) {
-    char *osABI;
     switch (n) {
-        case 0:
-            osABI = "UNIX System V";
-            break ;
-        case 1:
-            osABI = "HP-UX";
-            break ;
-        case 2:
-            osABI = "NetBSD";
-            break ;
-        case 3:
-            osABI = "Linux";
-            break ;
-        case 6:
-            osABI = "Oracle Solaris";
-            break ;
-        case 8:
-            osABI = "Silicon Graphics IRIX";
-            break ;
-        case 9:
-            osABI = "FreeBSD";
-            break ;
-        case 12:
-            osABI = "OpenBSD";
-            break ;
-        case 64:
-            osABI = "ARM EABI";
-            break ;
-        case 97:
-            osABI = "ARM";
-            break ;
+    case 0:  return "UNIX System V";
+    case 1:  return "HP-UX";
+    case 2:  return "NetBSD";
+    case 3:  return "Linux";
+    case 6:  return "Oracle Solaris";
+    case 8:  return "Silicon Graphics IRIX";
+    case 9:  return "FreeBSD";
+    case 12: return "OpenBSD";
+    case 64: return "ARM EABI";
+    case 97: return "ARM";
+    default: return "Unknown";
     }
-    return osABI;
 }
-
 
 int elf_read_header(int fd, Elf64_Ehdr *header)
 {
-    if (read(fd, header, sizeof(*header)) != sizeof(*header))
+        unsigned char ident[4];
+    if (read_at(fd, ident, sizeof(ident), 0, "read_header"))
+        return 1;
+    if (memcmp(ident, ELFMAG, SELFMAG) != 0) {
+        fprintf(stderr, "Not an ELF file\n");
+        return 1;
+    }
+    if (read_at(fd, header, sizeof(*header), 0, "read_header"))
+        return 1;
+
+    if (header->e_ident[0] != 0x7f || header->e_ident[1] != 'E' ||
+        header->e_ident[2] != 'L'  || header->e_ident[3] != 'F')
     {
-        perror("read_parser");
-        close(fd);
+        fprintf(stderr, "Not an ELF file\n");
+        return 1;
+    }
+    if (header->e_ident[4] != ELFCLASS64)
+    {
+        fprintf(stderr, "Only ELF64 is supported\n");
         return 1;
     }
 
-    char *magic = malloc(13);
-    memset(magic, 0, 13);
-    for (int i = 0; i < 4; i++) {
-        char *tmp = intToHex(header->e_ident[i]);
-        strcat(magic, tmp);
-        strcat(magic, " ");
-        free(tmp);
-    }
+    char magic[13];
+    for (int i = 0; i < 4; i++)
+        snprintf(magic + i * 3, 4, "%02X ", header->e_ident[i]);
 
-    char *class = (header->e_ident[4] == 1 ? "ELF32" : "ELF64");
-
-    char *endian = getEndian(header->e_ident[5]);
-    
+    const char *class = "ELF64";
+    const char *endian = getEndian(header->e_ident[5]);
     int version = header->e_ident[6];
-
-    char *machine = getArchi(header->e_machine);
-
-    char *type = getType(header->e_type);
-
-    char *osAbi = getOsABI(header->e_ident[7]);
-
+    const char *machine = getArchi(header->e_machine);
+    const char *type = getType(header->e_type);
+    const char *osAbi = getOsABI(header->e_ident[7]);
     int abiVersion = header->e_ident[8];
 
     printf("\n\n");
@@ -148,8 +92,8 @@ int elf_read_header(int fd, Elf64_Ehdr *header)
         "Machine:     %s\n"
         "Type:        %s\n"
         "OS/ABI:      %s\n"
-        "ABI version: %d\n"
-    , magic, class, endian, version, machine, type, osAbi, abiVersion);
+        "ABI version: %d\n",
+        magic, class, endian, version, machine, type, osAbi, abiVersion);
 
     printf("\n\n");
 
@@ -157,27 +101,22 @@ int elf_read_header(int fd, Elf64_Ehdr *header)
         "Entry point:               0x%lx\n"
         "Program header offset:     0x%lx\n"
         "Section header offset:     0x%lx\n"
-        "Number of program headers: %x\n"
-        , header->e_entry, header->e_phoff, header->e_shoff, header->e_phnum);
-    
+        "Number of program headers: %d\n",
+        (unsigned long)header->e_entry, (unsigned long)header->e_phoff,
+        (unsigned long)header->e_shoff, header->e_phnum);
     printf("\n");
 
     printf(
         "Number of sections:        %d\n"
-        "Section header size:       %d\n"
-        , header->e_shnum, header->e_shentsize);
-    
+        "Section header size:       %d\n",
+        header->e_shnum, header->e_shentsize);
     printf("\n");
 
     printf(
         "ELF header size:           %d\n"
-        "Flags:                     %d\n"
-        "Section name string table: %d\n"
-    , header->e_ehsize, header->e_flags, header->e_shstrndx);
-
-    
-    
-    free(magic);
+        "Flags:                     %u\n"
+        "Section name string table: %d\n",
+        header->e_ehsize, header->e_flags, header->e_shstrndx);
 
     return 0;
 }
