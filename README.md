@@ -1,6 +1,6 @@
 # BinScope
 
-![CI](https://github.com/<ton-user>/<ton-repo>/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/IQiyuu/binScope/actions/workflows/ci.yml/badge.svg)
 
 Programme qui, pour le moment :
   - lit les en-tête ELF du binaire passé en argument et les affiche dans le terminal
